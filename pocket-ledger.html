@@ -345,8 +345,15 @@
   var state = {
     accounts: [], transactions: [], tab: "dashboard",
     game: {xp:0, streak:0, lastLogDate:null},
-    settings: {monthlyBudget:0}
+    settings: {monthlyBudget:0, theme:"system"}
   };
+
+  function applyTheme(){
+    var t = state.settings.theme || "system";
+    if(t==="light") document.documentElement.setAttribute("data-theme","light");
+    else if(t==="dark") document.documentElement.setAttribute("data-theme","dark");
+    else document.documentElement.removeAttribute("data-theme");
+  }
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
@@ -358,7 +365,8 @@
         state.accounts = data.accounts || [];
         state.transactions = data.transactions || [];
         state.game = data.game || {xp:0, streak:0, lastLogDate:null};
-        state.settings = data.settings || {monthlyBudget:0};
+        state.settings = data.settings || {monthlyBudget:0, theme:"system"};
+        if(!state.settings.theme) state.settings.theme = "system";
         state.accounts.forEach(function(a){
           if(a.kind==="epay" || !a.kind) a.kind = "wallet";
         });
@@ -1110,6 +1118,18 @@
       + '<button class="btn" id="addAcctBtn">新增帳戶</button>'
       + '<div style="height:20px"></div>'
       + '<div class="section">'
+      +   '<div class="section-head"><span class="section-title">顯示</span></div>'
+      +   '<div class="card" style="padding:16px;">'
+      +     '<div class="hint" style="margin-top:0;">不動手機系統設定，只調整這個App的深淺色。</div>'
+      +     '<div style="height:10px"></div>'
+      +     '<div class="chiprow" id="themeChips">'
+      +       '<button class="chip'+(state.settings.theme==="system"?" active":"")+'" data-theme-choice="system">跟隨系統</button>'
+      +       '<button class="chip'+(state.settings.theme==="light"?" active":"")+'" data-theme-choice="light">淺色</button>'
+      +       '<button class="chip'+(state.settings.theme==="dark"?" active":"")+'" data-theme-choice="dark">深色</button>'
+      +     '</div>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="section">'
       +   '<div class="section-head"><span class="section-title">備份</span></div>'
       +   '<div class="card" style="padding:16px;">'
       +     '<div class="hint" style="margin-top:0;">資料只存在這支手機裡。想備份就展開下面文字框，全選複製貼到備忘錄；要還原就貼回來按「還原」。</div>'
@@ -1123,6 +1143,12 @@
     });
     view.querySelector("#addAcctBtn").addEventListener("click", function(){ openAccountForm(null); });
     view.querySelector("#showBackup").addEventListener("click", openBackupSheet);
+    view.querySelector("#themeChips").addEventListener("click", function(e){
+      var b = e.target.closest("[data-theme-choice]"); if(!b) return;
+      state.settings.theme = b.dataset.themeChoice;
+      save(); applyTheme();
+      view.querySelectorAll("#themeChips .chip").forEach(function(c){ c.classList.toggle("active", c===b); });
+    });
     bindAcctDetail(view);
   }
 
@@ -1215,6 +1241,7 @@
 
   /* ---------------- init ---------------- */
   load();
+  applyTheme();
   render();
 })();
 </script>
