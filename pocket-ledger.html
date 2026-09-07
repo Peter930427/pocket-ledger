@@ -179,6 +179,27 @@
   .legend-name{font-size:12.5px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .legend-amt{font-family:var(--font-mono); font-size:12px; color:var(--ink-muted); flex:0 0 auto;}
 
+  .game-card{padding:16px;}
+  .game-top{display:flex; align-items:baseline; justify-content:space-between; gap:8px;}
+  .game-level{font-family:var(--font-display); font-size:16px; font-weight:600;}
+  .game-title{font-family:var(--font-body); font-size:12.5px; color:var(--ink-muted); font-weight:600; margin-left:4px;}
+  .game-streak{font-size:13px; font-weight:700; color:var(--accent); flex:0 0 auto;}
+  .xp-track{height:6px; border-radius:3px; background:var(--surface-2); overflow:hidden; margin-top:9px;}
+  .xp-fill{height:100%; background:var(--accent); border-radius:3px; transition:width .3s ease;}
+  .xp-label{font-size:11px; color:var(--ink-muted); margin-top:5px; font-family:var(--font-mono);}
+  .monster-block{display:flex; align-items:center; gap:14px; margin-top:16px; padding-top:16px; border-top:1px dashed var(--hairline);}
+  .monster-svg{width:76px; height:76px; flex:0 0 auto;}
+  .monster-info{flex:1; min-width:0;}
+  .monster-hp-label{font-size:13px; font-weight:700;}
+  .hp-track{height:9px; border-radius:5px; background:var(--surface-2); overflow:hidden; margin-top:7px;}
+  .hp-fill{height:100%; border-radius:5px; transition:width .3s ease;}
+  .hp-fill.high{background:var(--income);}
+  .hp-fill.mid{background:var(--accent);}
+  .hp-fill.low{background:var(--expense);}
+  .hp-fill.dead{background:var(--ink-muted);}
+  .monster-sub{font-size:11.5px; color:var(--ink-muted); margin-top:6px;}
+  .monster-empty{margin-top:14px; padding-top:14px; border-top:1px dashed var(--hairline);}
+
   .empty{
     padding:34px 20px; text-align:center; color:var(--ink-muted); font-size:13.5px; line-height:1.7;
   }
@@ -270,7 +291,11 @@
 
   /* ---------------- state & storage ---------------- */
   var STORE_KEY = "pocketledger_v1";
-  var state = { accounts: [], transactions: [], tab: "dashboard" };
+  var state = {
+    accounts: [], transactions: [], tab: "dashboard",
+    game: {xp:0, streak:0, lastLogDate:null},
+    settings: {monthlyBudget:0}
+  };
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
@@ -281,6 +306,8 @@
         var data = JSON.parse(raw);
         state.accounts = data.accounts || [];
         state.transactions = data.transactions || [];
+        state.game = data.game || {xp:0, streak:0, lastLogDate:null};
+        state.settings = data.settings || {monthlyBudget:0};
         state.accounts.forEach(function(a){
           if(a.kind==="epay" || !a.kind) a.kind = "wallet";
         });
@@ -289,7 +316,7 @@
   }
   function save(){
     try{
-      localStorage.setItem(STORE_KEY, JSON.stringify({accounts:state.accounts, transactions:state.transactions}));
+      localStorage.setItem(STORE_KEY, JSON.stringify({accounts:state.accounts, transactions:state.transactions, game:state.game, settings:state.settings}));
     }catch(e){ showToast("儲存失敗，裝置空間可能不足"); }
   }
 
@@ -342,6 +369,51 @@
     return state.accounts.find(function(a){ return a.id===idOrSlug; }) || null;
   }
 
+  /* ---------------- RPG: level & monster ---------------- */
+  var LOG_XP = 8;
+  var XP_PER_LEVEL = 120;
+  var TITLE_STEPS = [
+    [1,"記帳新手"],[3,"記帳學徒"],[5,"精打細算者"],[8,"理財戰士"],
+    [12,"理財騎士"],[16,"預算大師"],[20,"傳說會計師"]
+  ];
+  function titleForLevel(lvl){
+    var t = TITLE_STEPS[0][1];
+    TITLE_STEPS.forEach(function(s){ if(lvl>=s[0]) t=s[1]; });
+    return t;
+  }
+  function levelInfo(){
+    var xp = (state.game && state.game.xp) || 0;
+    var level = Math.floor(xp/XP_PER_LEVEL)+1;
+    return {level:level, title:titleForLevel(level), into:xp%XP_PER_LEVEL, need:XP_PER_LEVEL, xp:xp};
+  }
+  function awardLogXP(){
+    var g = state.game;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var todayStr = today.toDateString();
+    var bonus = 0;
+    if(g.lastLogDate !== todayStr){
+      var last = g.lastLogDate ? new Date(g.lastLogDate) : null;
+      if(last){
+        var diffDays = Math.round((today - last)/86400000);
+        g.streak = (diffDays===1) ? (g.streak||0)+1 : 1;
+      } else {
+        g.streak = 1;
+      }
+      bonus = Math.min(g.streak,7)*3;
+      g.lastLogDate = todayStr;
+    }
+    g.xp = (g.xp||0) + LOG_XP + bonus;
+  }
+  function monsterState(){
+    var budget = state.settings.monthlyBudget || 0;
+    if(!(budget>0)) return null;
+    var spent = monthExpenseTx().reduce(function(s,t){return s+t.amount;},0);
+    var hp = budget - spent;
+    var pct = Math.max(0, Math.min(100, (hp/budget)*100));
+    var status = hp<=0 ? "dead" : (pct<25 ? "low" : (pct<60 ? "mid" : "high"));
+    return {budget:budget, spent:spent, hp:hp, pct:pct, status:status};
+  }
+
   function commitTransaction(opts){
     var acc = findAccount(opts.accountId);
     if(!acc) return null;
@@ -359,6 +431,7 @@
       fromAccountId: src ? src.id : null, fromAccountName: src ? src.name : null
     };
     state.transactions.unshift(tx);
+    awardLogXP();
     save();
     return tx;
   }
@@ -459,6 +532,66 @@
     });
   }
 
+  /* ---------------- RPG UI ---------------- */
+  function monsterSVG(status){
+    var color = status==="dead" ? "var(--ink-muted)" : (status==="low" ? "var(--expense)" : (status==="mid" ? "var(--accent)" : "var(--income)"));
+    var eyes, mouth;
+    if(status==="dead"){
+      eyes = '<path d="M40,44 L48,52 M48,44 L40,52" stroke="var(--bg)" stroke-width="2.5" stroke-linecap="round"/><path d="M52,44 L60,52 M60,44 L52,52" stroke="var(--bg)" stroke-width="2.5" stroke-linecap="round"/>';
+      mouth = '<path d="M38,64 Q50,58 62,64" fill="none" stroke="var(--bg)" stroke-width="2.5" stroke-linecap="round"/>';
+    } else {
+      eyes = '<circle cx="42" cy="47" r="5" fill="var(--bg)"/><circle cx="58" cy="47" r="5" fill="var(--bg)"/><circle cx="42" cy="47" r="2" fill="var(--ink)"/><circle cx="58" cy="47" r="2" fill="var(--ink)"/>';
+      var dy = status==="high" ? 12 : (status==="mid" ? 2 : -8);
+      mouth = '<path d="M40,63 Q50,'+(63+dy)+' 60,63" fill="none" stroke="var(--bg)" stroke-width="2.5" stroke-linecap="round"/>';
+    }
+    return '<svg viewBox="0 0 100 100" class="monster-svg"><ellipse cx="50" cy="58" rx="34" ry="29" fill="'+color+'"/><ellipse cx="50" cy="30" rx="9" ry="6" fill="'+color+'"/>'+eyes+mouth+'</svg>';
+  }
+  function gameSectionHTML(){
+    var lv = levelInfo();
+    var m = monsterState();
+    var statusText = {high:"怪獸還很兇", mid:"怪獸受傷了", low:"怪獸快倒了，撐住！", dead:"怪獸打贏你了，這個月超支了"};
+    return '<div class="section card game-card">'
+      + '<div class="game-top">'
+      +   '<div class="game-level">Lv.'+lv.level+'<span class="game-title">'+lv.title+'</span></div>'
+      +   (state.game.streak>1 ? '<div class="game-streak">🔥 連續'+state.game.streak+'天</div>' : '')
+      + '</div>'
+      + '<div class="xp-track"><div class="xp-fill" style="width:'+Math.round(lv.into/lv.need*100)+'%"></div></div>'
+      + '<div class="xp-label">'+lv.into+' / '+lv.need+' XP　·　下次升級還差 '+(lv.need-lv.into)+'</div>'
+      + (m ? (
+          '<div class="monster-block">'
+          + monsterSVG(m.status)
+          + '<div class="monster-info">'
+          +   '<div class="monster-hp-label">'+statusText[m.status]+'</div>'
+          +   '<div class="hp-track"><div class="hp-fill '+m.status+'" style="width:'+m.pct+'%"></div></div>'
+          +   '<div class="monster-sub">怪獸HP '+fmtMoney(Math.max(m.hp,0))+'　·　本月預算 '+fmtMoney(m.budget)+'　·　已花 '+fmtMoney(m.spent)+'</div>'
+          +   '<button class="link-btn" id="editBudget" style="margin-top:6px;">調整預算</button>'
+          + '</div></div>'
+        ) : (
+          '<div class="monster-empty">'
+          + '<div class="hint" style="margin-top:0;">設定一個本月預算，開始跟超支怪獸戰鬥——你每花一筆錢，怪獸就會受到等值傷害，月底前別讓牠打倒你。</div>'
+          + '<button class="btn ghost" id="editBudget" style="margin-top:10px;">設定本月預算</button>'
+          + '</div>'
+        ))
+      + '</div>';
+  }
+  function bindGameSection(root){
+    var btn = root.querySelector("#editBudget");
+    if(!btn) return;
+    btn.addEventListener("click", function(){
+      openSheet(
+        '<div class="sheet-title">本月預算</div>'
+        + '<div class="hint" style="margin-top:0;">這是怪獸的血量上限，你這個月每花一筆錢，怪獸就會扣掉等值的HP。</div>'
+        + '<div class="field"><label>金額</label><input id="budgetInput" inputmode="decimal" class="amount-input" value="'+(state.settings.monthlyBudget||"")+'" placeholder="例如 15000"></div>'
+        + '<button class="btn" id="budgetSave">儲存</button>'
+      );
+      sheetContent.querySelector("#budgetSave").addEventListener("click", function(){
+        var v = parseFloat(sheetContent.querySelector("#budgetInput").value);
+        state.settings.monthlyBudget = (v>0) ? v : 0;
+        save(); closeSheet(); render();
+      });
+    });
+  }
+
   /* ---------------- toast ---------------- */
   var toastTimer = null;
   function showToast(msg){
@@ -542,6 +675,8 @@
       +   '<div class="hero-sub">實際拿在手上的現金；銀行、台灣Pay不算在內'+(cashRef?'　·　點看分析':'')+'</div>'
       + '</button>'
 
+      + gameSectionHTML()
+
       + (walletAccts.length ? (
         '<div class="section">'
         + '<div class="section-head"><span class="section-title">儲值支付</span></div>'
@@ -572,6 +707,7 @@
     bindTxRows(view);
     bindDonutHighlight(view);
     bindAcctDetail(view);
+    bindGameSection(view);
   }
 
   function onboardingHTML(){
