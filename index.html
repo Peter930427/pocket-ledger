@@ -203,6 +203,45 @@
   .monster-sub{font-size:11.5px; color:var(--ink-muted); margin-top:6px;}
   .monster-empty{margin-top:14px; padding-top:14px; border-top:1px dashed var(--hairline);}
 
+  .battle-result{text-align:center; padding:8px 4px 6px;}
+  .battle-monster-wrap{position:relative; display:flex; justify-content:center; margin-bottom:6px;}
+  .battle-monster-wrap .monster-svg{width:104px; height:104px;}
+  .monster-hit{animation:monsterShake .5s ease;}
+  .dmg-float{
+    position:absolute; top:6px; left:50%; margin-left:18px;
+    font-family:var(--font-display); font-weight:800; font-size:22px; color:var(--expense);
+    animation:dmgFloat 1.1s ease forwards;
+  }
+  .battle-headline{font-family:var(--font-display); font-size:19px; font-weight:700; margin-top:8px;}
+  .battle-sub{font-size:12.5px; color:var(--ink-muted); margin-top:10px; line-height:1.6;}
+  .battle-result .hp-track{margin-top:14px; height:10px;}
+  .levelup-badge{
+    margin-top:16px; padding:12px; border-radius:16px; background:var(--surface-2);
+    font-family:var(--font-display); font-weight:700; font-size:15px; color:var(--accent-deep);
+    animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  .levelup-badge span{color:var(--ink);}
+  .battle-result .btn{margin-top:18px;}
+  @keyframes monsterShake{
+    10%,90%{transform:translateX(-2px) rotate(-2deg);}
+    20%,80%{transform:translateX(3px) rotate(2deg);}
+    30%,50%,70%{transform:translateX(-6px) rotate(-3deg);}
+    40%,60%{transform:translateX(6px) rotate(3deg);}
+  }
+  @keyframes dmgFloat{
+    0%{opacity:0; transform:translateY(0) scale(.7);}
+    18%{opacity:1; transform:translateY(-8px) scale(1.15);}
+    100%{opacity:0; transform:translateY(-46px) scale(1);}
+  }
+  @keyframes popIn{
+    0%{opacity:0; transform:scale(.55);}
+    65%{opacity:1; transform:scale(1.06);}
+    100%{opacity:1; transform:scale(1);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .monster-hit, .dmg-float, .levelup-badge{animation:none !important;}
+  }
+
   .empty{
     padding:34px 20px; text-align:center; color:var(--ink-muted); font-size:13.5px; line-height:1.7;
   }
@@ -604,6 +643,62 @@
     });
   }
 
+  /* ---------------- RPG: battle feedback ---------------- */
+  function levelUpBlockHTML(lv){
+    return '<div class="levelup-badge">✨ 升級了！Lv.'+lv.level+' <span>'+lv.title+'</span> ✨</div>';
+  }
+  function showBattleResult(damage, before, after, leveledUp, lv){
+    var headline, sub, showHit = true;
+    if(before.hp<=0){
+      headline = "怪獸已經倒下了";
+      sub = "這筆是超出這個月預算後的支出，還是有記錄下來。";
+      showHit = false;
+    } else if(after.hp<=0){
+      headline = "🐉 怪獸被你打倒了！";
+      sub = "同時代表這個月的預算也用完了——之後的支出還是會記錄，只是不會再有新的傷害動畫。";
+    } else {
+      headline = "⚔️ 造成 "+fmtMoney(damage)+" 傷害！";
+      sub = "怪獸HP剩下　"+fmtMoney(after.hp)+" / "+fmtMoney(after.budget);
+    }
+    openSheet(
+      '<div class="battle-result">'
+      + '<div class="battle-monster-wrap">'
+      +   '<div class="'+(showHit?'monster-hit':'')+'">'+monsterSVG(after.status)+'</div>'
+      +   (showHit ? '<div class="dmg-float">-'+fmtMoney(damage)+'</div>' : '')
+      + '</div>'
+      + '<div class="battle-headline">'+headline+'</div>'
+      + '<div class="hp-track"><div class="hp-fill '+after.status+'" style="width:'+after.pct+'%"></div></div>'
+      + '<div class="battle-sub">'+sub+'</div>'
+      + (leveledUp ? levelUpBlockHTML(lv) : '')
+      + '<button class="btn" id="battleClose">繼續</button>'
+      + '</div>'
+    );
+    sheetContent.querySelector("#battleClose").addEventListener("click", function(){ closeSheet(); render(); });
+  }
+  function showLevelUpSheet(lv){
+    openSheet(
+      '<div class="battle-result">'
+      + levelUpBlockHTML(lv)
+      + '<div class="hint" style="margin-top:10px;">持續記帳就會一直升級，稱號也會跟著變化。</div>'
+      + '<button class="btn" id="battleClose" style="margin-top:14px;">太棒了！</button>'
+      + '</div>'
+    );
+    sheetContent.querySelector("#battleClose").addEventListener("click", function(){ closeSheet(); render(); });
+  }
+  function afterCommit(tx, beforeLevel, beforeMonster, fallbackMsg){
+    if(!tx){ return; }
+    var lv = levelInfo();
+    var leveledUp = lv.level > beforeLevel;
+    if(tx.type==="expense" && beforeMonster){
+      showBattleResult(tx.amount, beforeMonster, monsterState(), leveledUp, lv);
+    } else if(leveledUp){
+      showLevelUpSheet(lv);
+    } else {
+      showToast(fallbackMsg);
+      render();
+    }
+  }
+
   /* ---------------- toast ---------------- */
   var toastTimer = null;
   function showToast(msg){
@@ -876,9 +971,10 @@
       qSubmit.addEventListener("click", function(){
         var parsed = parseQuickText(qInput.value);
         if(!parsed) return;
-        commitTransaction({accountId:cash.id, type:"expense", amount:parsed.amount, category:parsed.category, note:parsed.note, source:"voice"});
-        showToast("已記錄　"+fmtMoney(parsed.amount));
-        qInput.value=""; updateQuickPreview(); render();
+        var beforeLevel = levelInfo().level, beforeMonster = monsterState();
+        var tx = commitTransaction({accountId:cash.id, type:"expense", amount:parsed.amount, category:parsed.category, note:parsed.note, source:"voice"});
+        qInput.value=""; updateQuickPreview();
+        afterCommit(tx, beforeLevel, beforeMonster, "已記錄　"+fmtMoney(parsed.amount));
       });
     }
 
@@ -907,9 +1003,10 @@
       wdAmount.addEventListener("input", function(){ setWd(parseFloat(wdAmount.value)||0); });
       wdSubmit.addEventListener("click", function(){
         if(!(wdVal>0)) return;
-        commitTransaction({accountId:cash.id, type:"withdraw", amount:wdVal, category:"提領", note:"ATM 提款", source:"manual", fromAccountId:wdSrc});
-        showToast("已提領　"+fmtMoney(wdVal));
-        wdAmount.value=""; setWd(0); render();
+        var beforeLevel = levelInfo().level, beforeMonster = monsterState();
+        var tx = commitTransaction({accountId:cash.id, type:"withdraw", amount:wdVal, category:"提領", note:"ATM 提款", source:"manual", fromAccountId:wdSrc});
+        wdAmount.value=""; setWd(0);
+        afterCommit(tx, beforeLevel, beforeMonster, "已提領　"+fmtMoney(wdVal));
       });
     }
 
@@ -941,10 +1038,10 @@
       var amt = parseFloat(view.querySelector("#manAmount").value);
       if(!(amt>0)){ showToast("請輸入正確金額"); return; }
       var note = view.querySelector("#manNote").value;
-      commitTransaction({accountId:selAcct, type:selType, amount:amt, category:selCat, note:note, source:"manual"});
-      showToast("已記錄　"+fmtMoney(amt));
+      var beforeLevel = levelInfo().level, beforeMonster = monsterState();
+      var tx = commitTransaction({accountId:selAcct, type:selType, amount:amt, category:selCat, note:note, source:"manual"});
       view.querySelector("#manAmount").value=""; view.querySelector("#manNote").value="";
-      render();
+      afterCommit(tx, beforeLevel, beforeMonster, "已記錄　"+fmtMoney(amt));
     });
   }
 
