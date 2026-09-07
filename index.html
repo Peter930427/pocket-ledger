@@ -204,6 +204,10 @@
   .monster-empty{margin-top:14px; padding-top:14px; border-top:1px dashed var(--hairline);}
 
   .battle-result{text-align:center; padding:8px 4px 6px;}
+  .xp-chip{
+    display:inline-block; padding:5px 12px; border-radius:999px; background:var(--income); color:#fff;
+    font-size:12px; font-weight:700; margin-bottom:10px;
+  }
   .battle-monster-wrap{position:relative; display:flex; justify-content:center; margin-bottom:6px;}
   .battle-monster-wrap .monster-svg{width:104px; height:104px;}
   .monster-hit{animation:monsterShake .5s ease;}
@@ -581,26 +585,22 @@
 
   /* ---------------- RPG UI ---------------- */
   function monsterSVG(status){
-    var color = status==="dead" ? "var(--ink-muted)" : (status==="low" ? "var(--expense)" : (status==="mid" ? "var(--accent)" : "var(--income)"));
-    var eyes, mouth;
-    if(status==="dead"){
-      eyes = '<path d="M40,44 L48,52 M48,44 L40,52" stroke="var(--bg)" stroke-width="2.5" stroke-linecap="round"/><path d="M52,44 L60,52 M60,44 L52,52" stroke="var(--bg)" stroke-width="2.5" stroke-linecap="round"/>';
-      mouth = '<path d="M38,64 Q50,58 62,64" fill="none" stroke="var(--bg)" stroke-width="2.5" stroke-linecap="round"/>';
-    } else {
-      eyes = '<circle cx="41" cy="47" r="6" fill="var(--bg)"/><circle cx="59" cy="47" r="6" fill="var(--bg)"/>'
-        + '<circle cx="42" cy="48" r="2.6" fill="var(--ink)"/><circle cx="60" cy="48" r="2.6" fill="var(--ink)"/>'
-        + '<circle cx="43.2" cy="46.5" r=".9" fill="var(--bg)"/><circle cx="61.2" cy="46.5" r=".9" fill="var(--bg)"/>';
-      var dy = status==="high" ? 12 : (status==="mid" ? 2 : -8);
-      mouth = '<path d="M40,63 Q50,'+(63+dy)+' 60,63" fill="none" stroke="var(--bg)" stroke-width="2.5" stroke-linecap="round"/>';
-    }
-    var blush = (status==="dead") ? '' : '<ellipse cx="30" cy="60" rx="5.5" ry="3.5" fill="var(--bg)" opacity=".35"/><ellipse cx="70" cy="60" rx="5.5" ry="3.5" fill="var(--bg)" opacity=".35"/>';
+    /* status = your shield's condition. The monster gets bolder & more gleeful as your shield weakens. */
+    var color = (status==="low"||status==="dead") ? "var(--expense)" : (status==="mid" ? "var(--accent)" : "var(--income)");
+    var eyes = '<circle cx="41" cy="47" r="6" fill="var(--bg)"/><circle cx="59" cy="47" r="6" fill="var(--bg)"/>'
+      + '<circle cx="42" cy="48" r="2.6" fill="var(--ink)"/><circle cx="60" cy="48" r="2.6" fill="var(--ink)"/>'
+      + '<circle cx="43.2" cy="46.5" r=".9" fill="var(--bg)"/><circle cx="61.2" cy="46.5" r=".9" fill="var(--bg)"/>';
+    /* high (shield strong, monster frustrated) = frown; low/dead (shield weak/broken, monster gleeful) = big grin */
+    var dy = status==="high" ? -9 : (status==="mid" ? 3 : 15);
+    var mouth = '<path d="M40,63 Q50,'+(63+dy)+' 60,63" fill="none" stroke="var(--bg)" stroke-width="2.5" stroke-linecap="round"/>';
+    var brows = (status==="high") ? '<path d="M37,39 l7,2M63,39 l-7,2" stroke="var(--bg)" stroke-width="2" stroke-linecap="round" opacity=".5"/>' : '';
     var horns = '<path d="M32,26 Q30,16 38,20 Z" fill="'+color+'"/><path d="M68,26 Q70,16 62,20 Z" fill="'+color+'"/>';
-    return '<svg viewBox="0 0 100 100" class="monster-svg">'+horns+'<ellipse cx="50" cy="58" rx="34" ry="29" fill="'+color+'"/><ellipse cx="50" cy="30" rx="9" ry="6" fill="'+color+'"/>'+blush+eyes+mouth+'</svg>';
+    return '<svg viewBox="0 0 100 100" class="monster-svg">'+horns+'<ellipse cx="50" cy="58" rx="34" ry="29" fill="'+color+'"/><ellipse cx="50" cy="30" rx="9" ry="6" fill="'+color+'"/>'+brows+eyes+mouth+'</svg>';
   }
   function gameSectionHTML(){
     var lv = levelInfo();
     var m = monsterState();
-    var statusText = {high:"怪獸還很兇", mid:"怪獸受傷了", low:"怪獸快倒了，撐住！", dead:"怪獸打贏你了，這個月超支了"};
+    var statusText = {high:"護盾穩固，怪獸攻擊沒什麼效果", mid:"護盾出現裂痕了", low:"護盾快撐不住了，撐住！", dead:"護盾破了，這個月超支了"};
     return '<div class="section card game-card">'
       + '<div class="game-top">'
       +   '<div class="game-level">Lv.'+lv.level+'<span class="game-title">'+lv.title+'</span></div>'
@@ -614,12 +614,12 @@
           + '<div class="monster-info">'
           +   '<div class="monster-hp-label">'+statusText[m.status]+'</div>'
           +   '<div class="hp-track"><div class="hp-fill '+m.status+'" style="width:'+m.pct+'%"></div></div>'
-          +   '<div class="monster-sub">怪獸HP '+fmtMoney(Math.max(m.hp,0))+'　·　本月預算 '+fmtMoney(m.budget)+'　·　已花 '+fmtMoney(m.spent)+'</div>'
+          +   '<div class="monster-sub">護盾剩餘 '+fmtMoney(Math.max(m.hp,0))+'　·　本月預算 '+fmtMoney(m.budget)+'　·　已花 '+fmtMoney(m.spent)+'</div>'
           +   '<button class="link-btn" id="editBudget" style="margin-top:6px;">調整預算</button>'
           + '</div></div>'
         ) : (
           '<div class="monster-empty">'
-          + '<div class="hint" style="margin-top:0;">設定一個本月預算，開始跟超支怪獸戰鬥——你每花一筆錢，怪獸就會受到等值傷害，月底前別讓牠打倒你。</div>'
+          + '<div class="hint" style="margin-top:0;">設定一個本月預算，就會出現一隻超支怪——你每花一筆錢，牠就會攻擊一次你的預算護盾，看你能不能撐到月底不被打破。</div>'
           + '<button class="btn ghost" id="editBudget" style="margin-top:10px;">設定本月預算</button>'
           + '</div>'
         ))
@@ -631,7 +631,7 @@
     btn.addEventListener("click", function(){
       openSheet(
         '<div class="sheet-title">本月預算</div>'
-        + '<div class="hint" style="margin-top:0;">這是怪獸的血量上限，你這個月每花一筆錢，怪獸就會扣掉等值的HP。</div>'
+        + '<div class="hint" style="margin-top:0;">這是你這個月護盾的血量上限，每花一筆錢，怪獸就會攻擊護盾、扣掉等值血量。</div>'
         + '<div class="field"><label>金額</label><input id="budgetInput" inputmode="decimal" class="amount-input" value="'+(state.settings.monthlyBudget||"")+'" placeholder="例如 15000"></div>'
         + '<button class="btn" id="budgetSave">儲存</button>'
       );
@@ -647,21 +647,26 @@
   function levelUpBlockHTML(lv){
     return '<div class="levelup-badge">✨ 升級了！Lv.'+lv.level+' <span>'+lv.title+'</span> ✨</div>';
   }
-  function showBattleResult(damage, before, after, leveledUp, lv){
+  function xpChipHTML(xp){
+    return '<div class="xp-chip">記帳成功　+'+xp+' XP</div>';
+  }
+  function showBattleResult(damage, before, after, leveledUp, lv, xpGained){
+    /* HP here is YOUR budget shield. The monster is attacking it — breaking it is bad news, never a win. */
     var headline, sub, showHit = true;
     if(before.hp<=0){
-      headline = "怪獸已經倒下了";
-      sub = "這筆是超出這個月預算後的支出，還是有記錄下來。";
+      headline = "怪獸又攻擊了一次";
+      sub = "護盾已經破了，這筆一樣有記錄下來，繼續記帳沒問題。";
       showHit = false;
     } else if(after.hp<=0){
-      headline = "🐉 怪獸被你打倒了！";
-      sub = "同時代表這個月的預算也用完了——之後的支出還是會記錄，只是不會再有新的傷害動畫。";
+      headline = "🛡️💥 護盾被打破了！";
+      sub = "這個月的預算用完、超支了。之後的支出還是會記錄，只是護盾已經破了。";
     } else {
-      headline = "⚔️ 造成 "+fmtMoney(damage)+" 傷害！";
-      sub = "怪獸HP剩下　"+fmtMoney(after.hp)+" / "+fmtMoney(after.budget);
+      headline = "🗡️ 怪獸攻擊了！護盾扣 "+fmtMoney(damage);
+      sub = "護盾剩餘　"+fmtMoney(after.hp)+" / "+fmtMoney(after.budget);
     }
     openSheet(
       '<div class="battle-result">'
+      + xpChipHTML(xpGained)
       + '<div class="battle-monster-wrap">'
       +   '<div class="'+(showHit?'monster-hit':'')+'">'+monsterSVG(after.status)+'</div>'
       +   (showHit ? '<div class="dmg-float">-'+fmtMoney(damage)+'</div>' : '')
@@ -675,9 +680,10 @@
     );
     sheetContent.querySelector("#battleClose").addEventListener("click", function(){ closeSheet(); render(); });
   }
-  function showLevelUpSheet(lv){
+  function showLevelUpSheet(lv, xpGained){
     openSheet(
       '<div class="battle-result">'
+      + xpChipHTML(xpGained)
       + levelUpBlockHTML(lv)
       + '<div class="hint" style="margin-top:10px;">持續記帳就會一直升級，稱號也會跟著變化。</div>'
       + '<button class="btn" id="battleClose" style="margin-top:14px;">太棒了！</button>'
@@ -685,16 +691,17 @@
     );
     sheetContent.querySelector("#battleClose").addEventListener("click", function(){ closeSheet(); render(); });
   }
-  function afterCommit(tx, beforeLevel, beforeMonster, fallbackMsg){
+  function afterCommit(tx, beforeLevel, beforeMonster, beforeXP, fallbackMsg){
     if(!tx){ return; }
     var lv = levelInfo();
     var leveledUp = lv.level > beforeLevel;
+    var xpGained = state.game.xp - beforeXP;
     if(tx.type==="expense" && beforeMonster){
-      showBattleResult(tx.amount, beforeMonster, monsterState(), leveledUp, lv);
+      showBattleResult(tx.amount, beforeMonster, monsterState(), leveledUp, lv, xpGained);
     } else if(leveledUp){
-      showLevelUpSheet(lv);
+      showLevelUpSheet(lv, xpGained);
     } else {
-      showToast(fallbackMsg);
+      showToast(fallbackMsg+"　+"+xpGained+" XP");
       render();
     }
   }
@@ -971,10 +978,10 @@
       qSubmit.addEventListener("click", function(){
         var parsed = parseQuickText(qInput.value);
         if(!parsed) return;
-        var beforeLevel = levelInfo().level, beforeMonster = monsterState();
+        var beforeLevel = levelInfo().level, beforeMonster = monsterState(), beforeXP = state.game.xp;
         var tx = commitTransaction({accountId:cash.id, type:"expense", amount:parsed.amount, category:parsed.category, note:parsed.note, source:"voice"});
         qInput.value=""; updateQuickPreview();
-        afterCommit(tx, beforeLevel, beforeMonster, "已記錄　"+fmtMoney(parsed.amount));
+        afterCommit(tx, beforeLevel, beforeMonster, beforeXP, "已記錄　"+fmtMoney(parsed.amount));
       });
     }
 
@@ -1003,10 +1010,10 @@
       wdAmount.addEventListener("input", function(){ setWd(parseFloat(wdAmount.value)||0); });
       wdSubmit.addEventListener("click", function(){
         if(!(wdVal>0)) return;
-        var beforeLevel = levelInfo().level, beforeMonster = monsterState();
+        var beforeLevel = levelInfo().level, beforeMonster = monsterState(), beforeXP = state.game.xp;
         var tx = commitTransaction({accountId:cash.id, type:"withdraw", amount:wdVal, category:"提領", note:"ATM 提款", source:"manual", fromAccountId:wdSrc});
         wdAmount.value=""; setWd(0);
-        afterCommit(tx, beforeLevel, beforeMonster, "已提領　"+fmtMoney(wdVal));
+        afterCommit(tx, beforeLevel, beforeMonster, beforeXP, "已提領　"+fmtMoney(wdVal));
       });
     }
 
@@ -1038,10 +1045,10 @@
       var amt = parseFloat(view.querySelector("#manAmount").value);
       if(!(amt>0)){ showToast("請輸入正確金額"); return; }
       var note = view.querySelector("#manNote").value;
-      var beforeLevel = levelInfo().level, beforeMonster = monsterState();
+      var beforeLevel = levelInfo().level, beforeMonster = monsterState(), beforeXP = state.game.xp;
       var tx = commitTransaction({accountId:selAcct, type:selType, amount:amt, category:selCat, note:note, source:"manual"});
       view.querySelector("#manAmount").value=""; view.querySelector("#manNote").value="";
-      afterCommit(tx, beforeLevel, beforeMonster, "已記錄　"+fmtMoney(amt));
+      afterCommit(tx, beforeLevel, beforeMonster, beforeXP, "已記錄　"+fmtMoney(amt));
     });
   }
 
