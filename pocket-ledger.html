@@ -1,0 +1,968 @@
+<title>口袋帳</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="口袋帳">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Noto+Sans+TC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#F6F1E7;
+    --surface:#FFFDF8;
+    --surface-2:#EDE6D6;
+    --ink:#262019;
+    --ink-muted:#8A8072;
+    --hairline:#DCD3BF;
+    --accent:#B8863B;
+    --accent-ink:#FFFFFF;
+    --expense:#AB4A35;
+    --income:#2F6B54;
+    --withdraw:#3A4468;
+    --cat-1:#2a78d6; --cat-2:#eb6834; --cat-3:#1baf7a; --cat-4:#eda100;
+    --cat-5:#e87ba4; --cat-6:#008300; --cat-7:#e34948;
+    --shadow: 0 1px 2px rgba(38,32,25,.06), 0 8px 24px -12px rgba(38,32,25,.18);
+    --font-display:'Fraunces', Georgia, 'Noto Serif TC', serif;
+    --font-body:'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'PingFang TC', sans-serif;
+    --font-mono:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#17140F; --surface:#221E17; --surface-2:#2C2619;
+      --ink:#F1E9D8; --ink-muted:#9C917C; --hairline:#3A3325;
+      --accent:#D9A94F; --accent-ink:#17140F;
+      --expense:#E0705A; --income:#4F9B7E; --withdraw:#8B98D4;
+      --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500;
+      --cat-5:#d55181; --cat-6:#008300; --cat-7:#e66767;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#17140F; --surface:#221E17; --surface-2:#2C2619;
+    --ink:#F1E9D8; --ink-muted:#9C917C; --hairline:#3A3325;
+    --accent:#D9A94F; --accent-ink:#17140F;
+    --expense:#E0705A; --income:#4F9B7E; --withdraw:#8B98D4;
+    --cat-1:#3987e5; --cat-2:#d95926; --cat-3:#199e70; --cat-4:#c98500;
+    --cat-5:#d55181; --cat-6:#008300; --cat-7:#e66767;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%;}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font-body);
+    overscroll-behavior:none; -webkit-font-smoothing:antialiased;
+  }
+  button, input, textarea{font-family:inherit; color:inherit;}
+  button{-webkit-appearance:none; appearance:none; border:none; background:none; cursor:pointer;}
+  button:focus-visible, input:focus-visible, .row:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  input::placeholder, textarea::placeholder{color:var(--ink-muted); opacity:.8;}
+  h1,h2,h3,p{margin:0;}
+
+  #shell{
+    max-width:430px; margin:0 auto; min-height:100vh;
+    display:flex; flex-direction:column;
+    background:var(--bg);
+    position:relative;
+  }
+
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    padding:calc(env(safe-area-inset-top) + 14px) 20px 12px;
+    background:color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--hairline);
+  }
+  .topbar-inner{display:flex; align-items:baseline; justify-content:space-between;}
+  .brand{font-family:var(--font-display); font-weight:600; font-size:19px; letter-spacing:.02em;}
+  .tab-title{font-size:13px; color:var(--ink-muted); letter-spacing:.04em;}
+
+  main{flex:1; padding:18px 16px calc(96px + env(safe-area-inset-bottom));}
+
+  .tabbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    max-width:430px; margin:0 auto;
+    display:flex;
+    background:color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border-top:1px solid var(--hairline);
+    padding:8px 6px calc(6px + env(safe-area-inset-bottom));
+  }
+  .tabbar button{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:6px 2px; border-radius:12px; color:var(--ink-muted);
+    font-size:10.5px; font-weight:500; letter-spacing:.02em;
+  }
+  .tabbar button svg{width:22px; height:22px;}
+  .tabbar button.active{color:var(--accent);}
+  .tabbar button.active svg{filter:drop-shadow(0 0 0 var(--accent));}
+
+  .fab{
+    position:fixed; right:calc(50% - 215px + 18px); bottom:calc(78px + env(safe-area-inset-bottom));
+    z-index:25; width:54px; height:54px; border-radius:50%;
+    background:var(--accent); color:var(--accent-ink);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:var(--shadow); font-size:26px; line-height:1;
+  }
+  @media (max-width:430px){
+    .fab{right:18px;}
+  }
+
+  /* ---- cards / rows ---- */
+  .card{
+    background:var(--surface); border:1px solid var(--hairline);
+    border-radius:18px; box-shadow:var(--shadow);
+  }
+  .section{margin-bottom:22px;}
+  .section-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin:0 2px 10px;
+  }
+  .section-title{font-size:13px; font-weight:600; color:var(--ink-muted); letter-spacing:.06em; text-transform:uppercase;}
+  .link-btn{font-size:13px; color:var(--accent); font-weight:600;}
+
+  .hero{
+    padding:22px 20px 18px; position:relative; overflow:hidden;
+  }
+  .hero-label{font-size:13px; color:var(--ink-muted); font-weight:500;}
+  .hero-amount{
+    font-family:var(--font-display); font-size:44px; font-weight:600;
+    font-variant-numeric:tabular-nums; margin-top:2px; letter-spacing:-.01em;
+  }
+  .hero-sub{margin-top:10px; font-size:12.5px; color:var(--ink-muted);}
+
+  .accounts-scroll{display:flex; gap:10px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:none;}
+  .accounts-scroll::-webkit-scrollbar{display:none;}
+  .acct-chip{
+    flex:0 0 auto; min-width:132px; padding:14px 14px; border-radius:16px; text-align:left;
+    background:var(--surface); border:1px solid var(--hairline); box-shadow:var(--shadow);
+  }
+  .acct-chip .name{font-size:12.5px; color:var(--ink-muted); font-weight:600; display:flex; align-items:center; gap:6px;}
+  .acct-chip .bal{font-family:var(--font-mono); font-size:18px; font-weight:600; margin-top:6px; font-variant-numeric:tabular-nums;}
+  .kind-dot{width:6px; height:6px; border-radius:50%; background:var(--accent); flex:0 0 auto;}
+
+  .row{
+    display:flex; align-items:center; gap:12px; padding:12px 4px;
+    border-bottom:1px dashed var(--hairline); width:100%; text-align:left;
+  }
+  .row:last-child{border-bottom:none;}
+  .glyph{
+    width:38px; height:38px; border-radius:50%; flex:0 0 auto;
+    background:var(--surface-2); display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:600;
+  }
+  .row-main{flex:1; min-width:0;}
+  .row-title{font-size:14.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .row-sub{font-size:12px; color:var(--ink-muted); margin-top:2px;}
+  .row-amt{font-family:var(--font-mono); font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; flex:0 0 auto;}
+  .row-amt.expense{color:var(--expense);}
+  .row-amt.income{color:var(--income);}
+  .row-amt.withdraw{color:var(--withdraw);}
+
+  .donut-block{display:flex; align-items:center; gap:20px;}
+  .donut-svg-wrap{position:relative; width:128px; height:128px; flex:0 0 auto;}
+  .donut-svg-wrap svg{width:100%; height:100%; transform:rotate(-90deg);}
+  .donut-seg{transition:opacity .15s ease;}
+  .donut-seg.dim{opacity:.32;}
+  .donut-center{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; pointer-events:none;
+  }
+  .donut-center .amt{font-family:var(--font-display); font-size:19px; font-weight:600; font-variant-numeric:tabular-nums;}
+  .donut-center .lbl{font-size:10.5px; color:var(--ink-muted); margin-top:1px;}
+  .legend{flex:1; display:flex; flex-direction:column; gap:9px; min-width:0;}
+  .legend-row{display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:2px 0; border-radius:8px;}
+  .legend-row.dim{opacity:.4;}
+  .legend-dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
+  .legend-name{font-size:12.5px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .legend-amt{font-family:var(--font-mono); font-size:12px; color:var(--ink-muted); flex:0 0 auto;}
+
+  .empty{
+    padding:34px 20px; text-align:center; color:var(--ink-muted); font-size:13.5px; line-height:1.7;
+  }
+  .empty .big{font-size:15px; color:var(--ink); font-weight:600; margin-bottom:6px;}
+
+  /* ---- forms ---- */
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-muted); margin-bottom:6px;}
+  .field input, .field textarea{
+    width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--hairline);
+    background:var(--surface-2); font-size:15.5px;
+  }
+  .field textarea{resize:vertical; min-height:70px; font-family:var(--font-mono); font-size:12.5px;}
+  .amount-input{font-family:var(--font-mono); font-size:22px; font-weight:600;}
+  .chiprow{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{
+    padding:8px 14px; border-radius:999px; background:var(--surface-2); border:1px solid transparent;
+    font-size:13.5px; font-weight:600; color:var(--ink);
+  }
+  .chip.active{background:var(--accent); color:var(--accent-ink);}
+  .btn{
+    width:100%; padding:14px; border-radius:14px; background:var(--accent); color:var(--accent-ink);
+    font-size:15.5px; font-weight:700; text-align:center;
+  }
+  .btn:disabled{opacity:.4;}
+  .btn.ghost{background:var(--surface-2); color:var(--ink);}
+  .btn.danger{background:var(--expense); color:#fff;}
+  .btn-row{display:flex; gap:10px;}
+  .btn-row .btn{flex:1;}
+  .hint{font-size:12px; color:var(--ink-muted); margin-top:8px; line-height:1.6;}
+  .preview{
+    margin-top:10px; padding:10px 12px; border-radius:12px; background:var(--surface-2);
+    font-size:13px; color:var(--ink-muted);
+  }
+  .preview b{color:var(--ink);}
+
+  /* ---- sheet ---- */
+  .sheet-overlay{
+    position:fixed; inset:0; z-index:50; background:rgba(20,16,10,.42);
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:1; transition:opacity .22s ease;
+  }
+  .sheet-overlay.hidden{opacity:0; pointer-events:none;}
+  .sheet{
+    width:100%; max-width:430px; max-height:88vh; overflow-y:auto;
+    background:var(--bg); border-radius:22px 22px 0 0;
+    padding:14px 20px calc(24px + env(safe-area-inset-bottom));
+    transform:translateY(0); transition:transform .26s cubic-bezier(.32,.72,0,1);
+    box-shadow:0 -8px 32px rgba(0,0,0,.25);
+  }
+  .sheet-overlay.hidden .sheet{transform:translateY(100%);}
+  .sheet-grabber{width:36px; height:4px; border-radius:2px; background:var(--hairline); margin:0 auto 14px;}
+  .sheet-title{font-family:var(--font-display); font-size:19px; font-weight:600; margin-bottom:14px;}
+
+  @media (prefers-reduced-motion:reduce){
+    .sheet, .sheet-overlay{transition:none;}
+  }
+
+
+  .toast{
+    position:fixed; left:50%; bottom:120px; transform:translateX(-50%);
+    background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:999px;
+    font-size:13.5px; font-weight:600; z-index:60; box-shadow:var(--shadow);
+    opacity:0; transition:opacity .2s ease, transform .2s ease; pointer-events:none;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+</style>
+
+<div id="shell">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <span class="brand">口袋帳</span>
+      <span class="tab-title" id="tabTitle">總覽</span>
+    </div>
+  </header>
+  <main id="view"></main>
+  <button class="fab" id="fabBtn" aria-label="快速記一筆">+</button>
+  <nav class="tabbar" id="tabbar"></nav>
+</div>
+
+<div class="sheet-overlay hidden" id="overlay">
+  <div class="sheet" id="sheetContent"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- state & storage ---------------- */
+  var STORE_KEY = "pocketledger_v1";
+  var state = { accounts: [], transactions: [], tab: "dashboard" };
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(raw){
+        var data = JSON.parse(raw);
+        state.accounts = data.accounts || [];
+        state.transactions = data.transactions || [];
+        state.accounts.forEach(function(a){
+          if(a.kind==="epay" || !a.kind) a.kind = "wallet";
+        });
+      }
+    }catch(e){ console.warn("讀取資料失敗", e); }
+  }
+  function save(){
+    try{
+      localStorage.setItem(STORE_KEY, JSON.stringify({accounts:state.accounts, transactions:state.transactions}));
+    }catch(e){ showToast("儲存失敗，裝置空間可能不足"); }
+  }
+
+  /* ---------------- domain helpers ---------------- */
+  var CATEGORIES = ["餐飲","交通","購物","娛樂","生活","醫療","其他"];
+  var INCOME_CATEGORIES = ["薪資","獎金","退款","其他"];
+  var GLYPH = {"餐飲":"餐","交通":"行","購物":"購","娛樂":"樂","生活":"活","醫療":"醫","其他":"他","提領":"提","薪資":"薪","獎金":"獎","退款":"退"};
+  var KEYWORD_MAP = [
+    [/早餐|午餐|晚餐|宵夜|咖啡|飲料|便當|餐廳|吃|小吃|飯|麵|手搖/, "餐飲"],
+    [/捷運|公車|計程車|uber|停車|加油|高鐵|火車|客運|悠遊卡|停車費|油錢/i, "交通"],
+    [/買|購物|衣服|鞋|日用品|超商|超市|寶雅|網購|momo|蝦皮/i, "購物"],
+    [/電影|唱歌|ktv|遊戲|門票|展覽|訂閱|netflix/i, "娛樂"],
+    [/房租|水電|瓦斯|電話費|網路費|保養|房貸|管理費/, "生活"],
+    [/藥|看醫生|掛號|診所|醫院|牙醫/, "醫療"]
+  ];
+  function guessCategory(note){
+    for(var i=0;i<KEYWORD_MAP.length;i++){ if(KEYWORD_MAP[i][0].test(note)) return KEYWORD_MAP[i][1]; }
+    return "其他";
+  }
+  function parseQuickText(text){
+    var m = text.match(/(\d+(?:\.\d+)?)/);
+    if(!m) return null;
+    var amount = parseFloat(m[1]);
+    if(!(amount>0)) return null;
+    var note = (text.slice(0,m.index) + text.slice(m.index+m[1].length)).replace(/[元塊錢]/g,"").trim();
+    if(!note) note = "現金支出";
+    return { amount: amount, note: note, category: guessCategory(note) };
+  }
+
+  function fmtMoney(n){
+    var neg = n<0; n = Math.abs(Math.round(n));
+    return (neg?"-":"") + "$" + n.toLocaleString("en-US");
+  }
+  function fmtDate(ts){
+    var d = new Date(ts);
+    var today = new Date();
+    var sameDay = d.toDateString()===today.toDateString();
+    if(sameDay) return "今天 " + d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
+    return (d.getMonth()+1)+"/"+d.getDate()+" "+d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
+  }
+  function fmtDay(ts){
+    var d = new Date(ts);
+    var wd = ["日","一","二","三","四","五","六"][d.getDay()];
+    return (d.getMonth()+1)+"月"+d.getDate()+"日 週"+wd;
+  }
+
+  function cashAccounts(){ return state.accounts.filter(function(a){return a.kind==="cash";}); }
+  function primaryCash(){ return cashAccounts()[0] || null; }
+  function findAccount(idOrSlug){
+    return state.accounts.find(function(a){ return a.id===idOrSlug; }) || null;
+  }
+
+  function commitTransaction(opts){
+    var acc = findAccount(opts.accountId);
+    if(!acc) return null;
+    var amount = Math.round(opts.amount*100)/100;
+    if(!(amount>0)) return null;
+    if(opts.type==="expense") acc.balance -= amount;
+    else acc.balance += amount; // income / withdraw (into the target cash account)
+    var src = opts.type==="withdraw" && opts.fromAccountId ? findAccount(opts.fromAccountId) : null;
+    if(src) src.balance -= amount;
+    var tx = {
+      id: uid(), accountId: acc.id, accountName: acc.name,
+      type: opts.type, amount: amount,
+      category: opts.category || (opts.type==="withdraw" ? "提領" : "其他"),
+      note: opts.note || "", ts: Date.now(), source: opts.source || "manual",
+      fromAccountId: src ? src.id : null, fromAccountName: src ? src.name : null
+    };
+    state.transactions.unshift(tx);
+    save();
+    return tx;
+  }
+  function deleteTransaction(id){
+    var idx = state.transactions.findIndex(function(t){return t.id===id;});
+    if(idx<0) return;
+    var tx = state.transactions[idx];
+    var acc = findAccount(tx.accountId);
+    if(acc){
+      if(tx.type==="expense") acc.balance += tx.amount;
+      else acc.balance -= tx.amount;
+    }
+    if(tx.fromAccountId){
+      var src = findAccount(tx.fromAccountId);
+      if(src) src.balance += tx.amount;
+    }
+    state.transactions.splice(idx,1);
+    save();
+  }
+
+  /* ---------------- monthly stats & donut chart ---------------- */
+  var CAT_COLOR_VAR = {
+    "餐飲":"--cat-1","交通":"--cat-2","購物":"--cat-3","娛樂":"--cat-4","生活":"--cat-5","醫療":"--cat-6","其他":"--cat-7",
+    "薪資":"--cat-1","獎金":"--cat-2","退款":"--cat-3"
+  };
+  function monthTxOfType(type, accountId){
+    var now = new Date();
+    return state.transactions.filter(function(t){
+      var d = new Date(t.ts);
+      if(t.type!==type) return false;
+      if(accountId && t.accountId!==accountId) return false;
+      return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    });
+  }
+  function monthExpenseTx(accountId){ return monthTxOfType("expense", accountId); }
+  function monthIncomeTx(accountId){ return monthTxOfType("income", accountId); }
+  function sumBy(list, key){
+    var out = {};
+    list.forEach(function(t){ var k=t[key]; out[k]=(out[k]||0)+t.amount; });
+    return out;
+  }
+  function donutSectionHTML(title, byCategory, total, categories, bare){
+    if(!(total>0)) return '';
+    var body = buildDonut(byCategory, total, categories);
+    if(bare) return '<div class="section"><div class="section-title" style="margin:0 2px 10px;">'+title+'</div>'+body+'</div>';
+    return '<div class="section card" style="padding:18px 16px;">'
+      + '<div class="section-head" style="margin-bottom:14px;"><span class="section-title">'+title+'</span></div>'
+      + body
+      + '</div>';
+  }
+  function buildDonut(byCategory, total, categories){
+    var list = categories || CATEGORIES;
+    var r = 48, cx=60, cy=60, sw=16, circ = 2*Math.PI*r, gap = 3;
+    var cats = list.filter(function(c){ return byCategory[c] > 0; });
+    var cum = 0;
+    var segs = cats.map(function(c){
+      var amt = byCategory[c];
+      var frac = amt/total;
+      var full = frac*circ;
+      var dash = Math.max(full-gap, 0.0001);
+      var offset = -cum;
+      cum += full;
+      return '<circle class="donut-seg" data-cat="'+c+'" cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" '
+        + 'stroke="var('+CAT_COLOR_VAR[c]+')" stroke-width="'+sw+'" '
+        + 'stroke-dasharray="'+dash.toFixed(2)+' '+(circ-dash).toFixed(2)+'" '
+        + 'stroke-dashoffset="'+offset.toFixed(2)+'"></circle>';
+    }).join("");
+    var legend = cats.slice().sort(function(a,b){return byCategory[b]-byCategory[a];}).map(function(c){
+      var pct = Math.round(byCategory[c]/total*100);
+      return '<button class="legend-row" data-catlegend="'+c+'">'
+        + '<span class="legend-dot" style="background:var('+CAT_COLOR_VAR[c]+')"></span>'
+        + '<span class="legend-name">'+c+'</span>'
+        + '<span class="legend-amt">'+fmtMoney(byCategory[c])+'　'+pct+'%</span>'
+        + '</button>';
+    }).join("");
+    return '<div class="donut-block">'
+      + '<div class="donut-svg-wrap"><svg viewBox="0 0 120 120">'+segs+'</svg>'
+      +   '<div class="donut-center"><div class="amt">'+fmtMoney(total)+'</div><div class="lbl">本月支出</div></div>'
+      + '</div>'
+      + '<div class="legend">'+legend+'</div>'
+      + '</div>';
+  }
+  function bindDonutHighlight(root){
+    var rows = root.querySelectorAll("[data-catlegend]");
+    if(!rows.length) return;
+    rows.forEach(function(row){
+      row.addEventListener("click", function(){
+        var cat = row.dataset.catlegend;
+        var active = row.classList.contains("active-legend");
+        rows.forEach(function(r){ r.classList.remove("active-legend"); r.classList.remove("dim"); });
+        root.querySelectorAll(".donut-seg").forEach(function(s){ s.classList.remove("dim"); });
+        if(!active){
+          row.classList.add("active-legend");
+          rows.forEach(function(r){ if(r!==row) r.classList.add("dim"); });
+          root.querySelectorAll(".donut-seg").forEach(function(s){ if(s.dataset.cat!==cat) s.classList.add("dim"); });
+        }
+      });
+    });
+  }
+
+  /* ---------------- toast ---------------- */
+  var toastTimer = null;
+  function showToast(msg){
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove("show"); }, 1800);
+  }
+
+  /* ---------------- sheet ---------------- */
+  var overlay = document.getElementById("overlay");
+  var sheetContent = document.getElementById("sheetContent");
+  function openSheet(html, onOpen){
+    sheetContent.innerHTML = '<div class="sheet-grabber"></div>' + html;
+    overlay.classList.remove("hidden");
+    if(onOpen) onOpen(sheetContent);
+  }
+  function closeSheet(){ overlay.classList.add("hidden"); }
+  overlay.addEventListener("click", function(e){ if(e.target===overlay) closeSheet(); });
+
+  /* ---------------- icons ---------------- */
+  var ICONS = {
+    dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/></svg>',
+    add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>',
+    history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h11M4 17h7"/></svg>',
+    accounts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18" stroke-width="1.8"/><circle cx="17" cy="14.2" r="1.3" fill="currentColor" stroke="none"/></svg>'
+  };
+
+  /* ---------------- tabbar ---------------- */
+  var TABS = [["dashboard","總覽"],["add","記帳"],["history","明細"],["accounts","帳戶"]];
+  var tabbar = document.getElementById("tabbar");
+  tabbar.innerHTML = TABS.map(function(t){
+    return '<button data-tab="'+t[0]+'">'+ICONS[t[0]]+'<span>'+t[1]+'</span></button>';
+  }).join("");
+  tabbar.addEventListener("click", function(e){
+    var btn = e.target.closest("button[data-tab]");
+    if(!btn) return;
+    state.tab = btn.dataset.tab;
+    render();
+  });
+  document.getElementById("fabBtn").addEventListener("click", function(){
+    state.tab = "add"; render();
+  });
+
+  /* ---------------- render dispatch ---------------- */
+  var view = document.getElementById("view");
+  var tabTitle = document.getElementById("tabTitle");
+  function render(){
+    Array.from(tabbar.children).forEach(function(b){ b.classList.toggle("active", b.dataset.tab===state.tab); });
+    var titles = {dashboard:"總覽", add:"記帳", history:"明細", accounts:"帳戶"};
+    tabTitle.textContent = titles[state.tab];
+    if(state.tab==="dashboard") renderDashboard();
+    else if(state.tab==="add") renderAdd();
+    else if(state.tab==="history") renderHistory();
+    else if(state.tab==="accounts") renderAccounts();
+  }
+
+  /* ---------------- DASHBOARD ---------------- */
+  function renderDashboard(){
+    if(state.accounts.length===0){ view.innerHTML = onboardingHTML(); bindOnboarding(); return; }
+
+    var walletAccts = state.accounts.filter(function(a){return a.kind==="wallet";});
+    var bankAccts = state.accounts.filter(function(a){return a.kind==="bank";});
+    var cashTotal = cashAccounts().reduce(function(s,a){return s+a.balance;},0);
+
+    var monthTx = monthExpenseTx();
+    var monthTotal = monthTx.reduce(function(s,t){return s+t.amount;},0);
+    var byCat = sumBy(monthTx, "category");
+    var incomeTx = monthIncomeTx();
+    var incomeTotal = incomeTx.reduce(function(s,t){return s+t.amount;},0);
+    var byIncomeCat = sumBy(incomeTx, "category");
+
+    var recent = state.transactions.slice(0,6);
+
+    var cashRef = primaryCash();
+    view.innerHTML = ''
+      + '<button class="section card hero" style="width:100%; display:block;"'+(cashRef?' data-acctdetail="'+cashRef.id+'"':'')+'>'
+      +   '<div class="hero-label">手頭現金</div>'
+      +   '<div class="hero-amount">'+ fmtMoney(cashTotal) +'</div>'
+      +   '<div class="hero-sub">實際拿在手上的現金；銀行、台灣Pay不算在內'+(cashRef?'　·　點看分析':'')+'</div>'
+      + '</button>'
+
+      + (walletAccts.length ? (
+        '<div class="section">'
+        + '<div class="section-head"><span class="section-title">儲值支付</span></div>'
+        + '<div class="accounts-scroll">'
+        + walletAccts.map(acctChipHTML).join("")
+        + '</div></div>'
+      ) : '')
+
+      + (bankAccts.length ? (
+        '<div class="section">'
+        + '<div class="section-head"><span class="section-title">銀行・信用卡</span></div>'
+        + '<div class="accounts-scroll">'
+        + bankAccts.map(acctChipHTML).join("")
+        + '</div></div>'
+      ) : '')
+
+      + donutSectionHTML("本月支出分析（總覽）", byCat, monthTotal, CATEGORIES)
+      + donutSectionHTML("本月收入分析（總覽）", byIncomeCat, incomeTotal, INCOME_CATEGORIES)
+
+      + '<div class="section">'
+      +   '<div class="section-head"><span class="section-title">最近紀錄</span><button class="link-btn" id="seeAll">查看全部 →</button></div>'
+      +   '<div class="card" style="padding:4px 14px;">'
+      +     (recent.length ? recent.map(txRowHTML).join("") : '<div class="empty">還沒有任何紀錄</div>')
+      +   '</div>'
+      + '</div>';
+
+    view.querySelector("#seeAll").addEventListener("click", function(){ state.tab="history"; render(); });
+    bindTxRows(view);
+    bindDonutHighlight(view);
+    bindAcctDetail(view);
+  }
+
+  function onboardingHTML(){
+    return '<div class="section card empty" style="padding:40px 22px;">'
+      + '<div class="big">開始你的口袋帳</div>'
+      + '先建立一個「現金」帳戶，之後提款、現金支出都會記在這裡。'
+      + '<div style="height:16px"></div>'
+      + '<button class="btn" id="obCash">建立現金帳戶</button>'
+      + '</div>';
+  }
+  function bindOnboarding(){
+    var btn = view.querySelector("#obCash");
+    if(btn) btn.addEventListener("click", function(){
+      state.accounts.push({id:uid(), name:"現金", kind:"cash", balance:0, createdAt:Date.now()});
+      save(); state.tab="accounts"; render();
+    });
+  }
+
+  function acctChipHTML(a){
+    return '<button class="acct-chip" data-acctdetail="'+a.id+'"><div class="name"><span class="kind-dot"></span>'+esc(a.name)+'</div><div class="bal">'+fmtMoney(a.balance)+'</div></button>';
+  }
+  function bindAcctDetail(root){
+    root.querySelectorAll("[data-acctdetail]").forEach(function(el){
+      el.addEventListener("click", function(){ openAccountDetail(findAccount(el.dataset.acctdetail)); });
+    });
+  }
+  function openAccountDetail(acct){
+    if(!acct) return;
+    var kindLabel = acct.kind==="cash" ? "現金帳戶" : (acct.kind==="bank" ? "銀行・信用卡" : "儲值支付");
+    var exTx = monthExpenseTx(acct.id), exTotal = exTx.reduce(function(s,t){return s+t.amount;},0), byEx = sumBy(exTx,"category");
+    var inTx = monthIncomeTx(acct.id), inTotal = inTx.reduce(function(s,t){return s+t.amount;},0), byIn = sumBy(inTx,"category");
+    openSheet(
+      '<div class="sheet-title">'+esc(acct.name)+'</div>'
+      + '<div class="hint" style="margin-top:0;">'+kindLabel+'　·　餘額 '+fmtMoney(acct.balance)+'</div>'
+      + '<div style="height:6px"></div>'
+      + (donutSectionHTML("本月支出", byEx, exTotal, CATEGORIES, true) || '<div class="hint">這個帳戶這個月還沒有支出紀錄。</div>')
+      + (donutSectionHTML("本月收入", byIn, inTotal, INCOME_CATEGORIES, true) || '')
+      , function(root){ bindDonutHighlight(root); }
+    );
+  }
+  function txRowHTML(t){
+    var sign = t.type==="expense" ? "-" : (t.type==="withdraw" ? "→" : "+");
+    var glyph = GLYPH[t.category] || t.category.slice(0,1);
+    var sub = (t.type==="withdraw" && t.fromAccountName)
+      ? (esc(t.fromAccountName) + " → " + esc(t.accountName) + "　·　" + fmtDate(t.ts))
+      : (esc(t.accountName) + "　·　" + fmtDate(t.ts));
+    return '<button class="row" data-tx="'+t.id+'">'
+      + '<div class="glyph">'+glyph+'</div>'
+      + '<div class="row-main">'
+      +   '<div class="row-title">'+ esc(t.note || t.category) +'</div>'
+      +   '<div class="row-sub">'+ sub +'</div>'
+      + '</div>'
+      + '<div class="row-amt '+t.type+'">'+sign+fmtMoney(t.amount).replace("-","").replace("$","$")+'</div>'
+      + '</button>';
+  }
+  function bindTxRows(root){
+    root.querySelectorAll("[data-tx]").forEach(function(el){
+      el.addEventListener("click", function(){ openTxDetail(el.dataset.tx); });
+    });
+  }
+  function openTxDetail(id){
+    var t = state.transactions.find(function(x){return x.id===id;});
+    if(!t) return;
+    var typeLabel = t.type==="expense"?"支出":(t.type==="withdraw"?"提領":"收入");
+    openSheet(
+      '<div class="sheet-title">'+ esc(t.note||t.category) +'</div>'
+      + '<div class="hint" style="margin-bottom:16px;">'+typeLabel+'　·　'+esc(t.category)+'　·　'+esc(t.accountName)+'　·　'+fmtDate(t.ts)+'</div>'
+      + '<div class="hero-amount" style="font-size:32px; margin-bottom:20px;">'+fmtMoney(t.amount)+'</div>'
+      + '<button class="btn danger" id="delTx">刪除這筆紀錄</button>'
+    );
+    sheetContent.querySelector("#delTx").addEventListener("click", function(){
+      deleteTransaction(id); closeSheet(); showToast("已刪除"); render();
+    });
+  }
+
+  /* ---------------- ADD ---------------- */
+  function renderAdd(){
+    if(state.accounts.length===0){ view.innerHTML = onboardingHTML(); bindOnboarding(); return; }
+    var cash = primaryCash();
+    var others = state.accounts.filter(function(a){return a.kind!=="cash";});
+    var bankAccts = state.accounts.filter(function(a){return a.kind==="bank";});
+
+    view.innerHTML = ''
+      + (cash ? (
+        '<div class="section">'
+        + '<div class="section-head"><span class="section-title">現金支出</span></div>'
+        + '<div class="card" style="padding:16px;">'
+        +   '<input id="quickText" placeholder="早餐 65（可用語音輸入）" style="width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--hairline); background:var(--surface-2); font-size:15.5px;">'
+        +   '<div class="chiprow" style="margin-top:10px;">'
+        +     ["早餐","午餐","晚餐","咖啡","交通","購物"].map(function(w){return '<button class="chip" data-prefix="'+w+' ">'+w+'</button>';}).join("")
+        +   '</div>'
+        +   '<div id="quickPreview"></div>'
+        +   '<div style="height:12px"></div>'
+        +   '<button class="btn" id="quickSubmit" disabled>記一筆</button>'
+        +   '<div class="hint">點輸入框、再點鍵盤上的麥克風就能語音輸入，說完會自動轉成文字。</div>'
+        + '</div></div>'
+
+        + '<div class="section">'
+        + '<div class="section-head"><span class="section-title">提領現金</span></div>'
+        + '<div class="card" style="padding:16px;">'
+        +   (bankAccts.length ? (
+              '<div class="field"><label>從哪個帳戶提領</label><div class="chiprow" id="wdSource">'
+              + bankAccts.map(function(a,i){return '<button class="chip'+(i===0?" active":"")+'" data-src="'+a.id+'">'+esc(a.name)+'</button>';}).join("")
+              + '</div></div>'
+            ) : '<div class="hint" style="margin-top:0;">還沒有銀行帳戶，提領只會增加現金、不會扣其他帳戶餘額。去「帳戶」頁新增銀行帳戶就能對得起來。</div>')
+        +   '<div class="chiprow" id="wdChips">'
+        +     [500,1000,2000,3000].map(function(v){return '<button class="chip" data-wd="'+v+'">'+fmtMoney(v)+'</button>';}).join("")
+        +   '</div>'
+        +   '<div style="height:10px"></div>'
+        +   '<input id="wdAmount" inputmode="decimal" class="amount-input" placeholder="自訂金額" style="width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--hairline); background:var(--surface-2);">'
+        +   '<div style="height:12px"></div>'
+        +   '<button class="btn ghost" id="wdSubmit" disabled>確認提領到「'+esc(cash.name)+'」</button>'
+        + '</div></div>'
+      ) : '')
+
+      + '<div class="section">'
+      + '<div class="section-head"><span class="section-title">其他帳戶記一筆</span></div>'
+      + '<div class="card" style="padding:16px;">'
+      +   '<div class="field"><label>帳戶</label><div class="chiprow" id="manAccts">'
+      +     state.accounts.map(function(a,i){return '<button class="chip'+(i===0?' active':'')+'" data-acct="'+a.id+'">'+esc(a.name)+'</button>';}).join("")
+      +   '</div></div>'
+      +   '<div class="field"><label>類型</label><div class="chiprow" id="manType">'
+      +     '<button class="chip active" data-type="expense">支出</button><button class="chip" data-type="income">收入</button>'
+      +   '</div></div>'
+      +   '<div class="field"><label>金額</label><input id="manAmount" inputmode="decimal" class="amount-input" placeholder="0" style="width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--hairline); background:var(--surface-2);"></div>'
+      +   '<div class="field"><label>分類</label><div class="chiprow" id="manCat">'
+      +     CATEGORIES.map(function(c,i){return '<button class="chip'+(i===0?' active':'')+'" data-cat="'+c+'">'+c+'</button>';}).join("")
+      +   '</div></div>'
+      +   '<div class="field"><label>備註（選填）</label><input id="manNote" placeholder="備註"></div>'
+      +   '<button class="btn" id="manSubmit">記一筆</button>'
+      + '</div></div>';
+
+    /* quick cash text */
+    var qInput = view.querySelector("#quickText");
+    var qPreview = view.querySelector("#quickPreview");
+    var qSubmit = view.querySelector("#quickSubmit");
+    function updateQuickPreview(){
+      var parsed = parseQuickText(qInput.value);
+      if(parsed){
+        qPreview.innerHTML = '<div class="preview">分類 <b>'+parsed.category+'</b>　金額 <b>'+fmtMoney(parsed.amount)+'</b>　備註 <b>'+esc(parsed.note)+'</b></div>';
+        qSubmit.disabled = false;
+      } else {
+        qPreview.innerHTML = qInput.value ? '<div class="preview">沒有抓到金額，範例：早餐 65</div>' : '';
+        qSubmit.disabled = true;
+      }
+    }
+    if(qInput){
+      qInput.addEventListener("input", updateQuickPreview);
+      view.querySelectorAll("[data-prefix]").forEach(function(chip){
+        chip.addEventListener("click", function(){
+          qInput.value = chip.dataset.prefix; qInput.focus(); updateQuickPreview();
+        });
+      });
+      qSubmit.addEventListener("click", function(){
+        var parsed = parseQuickText(qInput.value);
+        if(!parsed) return;
+        commitTransaction({accountId:cash.id, type:"expense", amount:parsed.amount, category:parsed.category, note:parsed.note, source:"voice"});
+        showToast("已記錄　"+fmtMoney(parsed.amount));
+        qInput.value=""; updateQuickPreview(); render();
+      });
+    }
+
+    /* withdraw */
+    var wdAmount = view.querySelector("#wdAmount");
+    var wdSubmit = view.querySelector("#wdSubmit");
+    var wdVal = null;
+    var wdSrc = bankAccts.length ? bankAccts[0].id : null;
+    function setWd(v){
+      wdVal = v;
+      wdSubmit.disabled = !(v>0);
+      view.querySelectorAll("#wdChips .chip").forEach(function(c){ c.classList.toggle("active", parseFloat(c.dataset.wd)===v); });
+    }
+    if(wdAmount){
+      var wdSourceWrap = view.querySelector("#wdSource");
+      if(wdSourceWrap){
+        wdSourceWrap.addEventListener("click", function(e){
+          var b=e.target.closest("[data-src]"); if(!b) return;
+          wdSrc = b.dataset.src;
+          wdSourceWrap.querySelectorAll(".chip").forEach(function(c){c.classList.toggle("active", c===b);});
+        });
+      }
+      view.querySelectorAll("[data-wd]").forEach(function(chip){
+        chip.addEventListener("click", function(){ wdAmount.value=""; setWd(parseFloat(chip.dataset.wd)); });
+      });
+      wdAmount.addEventListener("input", function(){ setWd(parseFloat(wdAmount.value)||0); });
+      wdSubmit.addEventListener("click", function(){
+        if(!(wdVal>0)) return;
+        commitTransaction({accountId:cash.id, type:"withdraw", amount:wdVal, category:"提領", note:"ATM 提款", source:"manual", fromAccountId:wdSrc});
+        showToast("已提領　"+fmtMoney(wdVal));
+        wdAmount.value=""; setWd(0); render();
+      });
+    }
+
+    /* manual entry */
+    var selAcct = state.accounts[0].id, selType = "expense", selCat = CATEGORIES[0];
+    var manCatWrap = view.querySelector("#manCat");
+    function renderManCats(){
+      var list = selType==="income" ? INCOME_CATEGORIES : CATEGORIES;
+      selCat = list[0];
+      manCatWrap.innerHTML = list.map(function(c,i){return '<button class="chip'+(i===0?' active':'')+'" data-cat="'+c+'">'+c+'</button>';}).join("");
+    }
+    view.querySelector("#manAccts").addEventListener("click", function(e){
+      var b=e.target.closest("[data-acct]"); if(!b) return;
+      selAcct=b.dataset.acct;
+      view.querySelectorAll("#manAccts .chip").forEach(function(c){c.classList.toggle("active", c===b);});
+    });
+    view.querySelector("#manType").addEventListener("click", function(e){
+      var b=e.target.closest("[data-type]"); if(!b) return;
+      selType=b.dataset.type;
+      view.querySelectorAll("#manType .chip").forEach(function(c){c.classList.toggle("active", c===b);});
+      renderManCats();
+    });
+    manCatWrap.addEventListener("click", function(e){
+      var b=e.target.closest("[data-cat]"); if(!b) return;
+      selCat=b.dataset.cat;
+      manCatWrap.querySelectorAll(".chip").forEach(function(c){c.classList.toggle("active", c===b);});
+    });
+    view.querySelector("#manSubmit").addEventListener("click", function(){
+      var amt = parseFloat(view.querySelector("#manAmount").value);
+      if(!(amt>0)){ showToast("請輸入正確金額"); return; }
+      var note = view.querySelector("#manNote").value;
+      commitTransaction({accountId:selAcct, type:selType, amount:amt, category:selCat, note:note, source:"manual"});
+      showToast("已記錄　"+fmtMoney(amt));
+      view.querySelector("#manAmount").value=""; view.querySelector("#manNote").value="";
+      render();
+    });
+  }
+
+  /* ---------------- HISTORY ---------------- */
+  function renderHistory(){
+    if(state.transactions.length===0){
+      view.innerHTML = '<div class="card empty"><div class="big">還沒有紀錄</div>去「記帳」頁記下第一筆吧。</div>';
+      return;
+    }
+    var filter = state.historyFilter || "all";
+    var accts = state.accounts;
+    var list = state.transactions.filter(function(t){ return filter==="all" || t.accountId===filter; });
+
+    var groups = {};
+    var order = [];
+    list.forEach(function(t){
+      var key = new Date(t.ts).toDateString();
+      if(!groups[key]){ groups[key]=[]; order.push(key); }
+      groups[key].push(t);
+    });
+
+    view.innerHTML = ''
+      + '<div class="chiprow" style="margin-bottom:16px;">'
+      +   '<button class="chip'+(filter==="all"?" active":"")+'" data-f="all">全部</button>'
+      +   accts.map(function(a){return '<button class="chip'+(filter===a.id?" active":"")+'" data-f="'+a.id+'">'+esc(a.name)+'</button>';}).join("")
+      + '</div>'
+      + order.map(function(key){
+          var items = groups[key];
+          return '<div class="section">'
+            + '<div class="section-title" style="margin:0 2px 8px;">'+fmtDay(items[0].ts)+'</div>'
+            + '<div class="card" style="padding:4px 14px;">'+ items.map(txRowHTML).join("") +'</div>'
+            + '</div>';
+        }).join("");
+
+    view.querySelector(".chiprow").addEventListener("click", function(e){
+      var b=e.target.closest("[data-f]"); if(!b) return;
+      state.historyFilter = b.dataset.f; render();
+    });
+    bindTxRows(view);
+  }
+
+  /* ---------------- ACCOUNTS ---------------- */
+  var PRESETS = ["LINE Pay","街口支付","台灣Pay","悠遊付","Apple Pay","全支付"];
+  function renderAccounts(){
+    view.innerHTML = ''
+      + '<div class="section">'
+      +   (state.accounts.length ? state.accounts.map(function(a){
+            var kindLabel = a.kind==="cash" ? "現金帳戶" : (a.kind==="bank" ? "銀行・信用卡" : "儲值支付");
+            var subLine = "餘額 "+fmtMoney(a.balance);
+            return '<div class="card" style="padding:16px; margin-bottom:12px;">'
+              + '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">'
+              +   '<button data-acctdetail="'+a.id+'" style="text-align:left; flex:1; min-width:0;"><div class="row-title" style="font-size:16px;">'+esc(a.name)+'</div>'
+              +   '<div class="row-sub">'+kindLabel+'　·　'+subLine+'</div></button>'
+              +   '<button class="link-btn" data-edit="'+a.id+'">編輯</button>'
+              + '</div>'
+              + '</div>';
+          }).join("") : '<div class="card empty">還沒有帳戶</div>')
+      + '</div>'
+      + '<button class="btn" id="addAcctBtn">新增帳戶</button>'
+      + '<div style="height:20px"></div>'
+      + '<div class="section">'
+      +   '<div class="section-head"><span class="section-title">備份</span></div>'
+      +   '<div class="card" style="padding:16px;">'
+      +     '<div class="hint" style="margin-top:0;">資料只存在這支手機裡。想備份就展開下面文字框，全選複製貼到備忘錄；要還原就貼回來按「還原」。</div>'
+      +     '<div style="height:10px"></div>'
+      +     '<button class="btn ghost" id="showBackup">顯示備份文字</button>'
+      +   '</div>'
+      + '</div>';
+
+    view.querySelectorAll("[data-edit]").forEach(function(btn){
+      btn.addEventListener("click", function(){ openAccountForm(findAccount(btn.dataset.edit)); });
+    });
+    view.querySelector("#addAcctBtn").addEventListener("click", function(){ openAccountForm(null); });
+    view.querySelector("#showBackup").addEventListener("click", openBackupSheet);
+    bindAcctDetail(view);
+  }
+
+  function openAccountForm(acct){
+    var editing = !!acct;
+    openSheet(
+      '<div class="sheet-title">'+(editing?"編輯帳戶":"新增帳戶")+'</div>'
+      + '<div class="field"><label>名稱</label><input id="afName" value="'+(editing?esc(acct.name):"")+'" placeholder="例如：LINE Pay"></div>'
+      + (!editing ? (
+          '<div class="chiprow" style="margin:-6px 0 14px;">'+PRESETS.map(function(p){return '<button class="chip" data-preset="'+esc(p)+'">'+esc(p)+'</button>';}).join("")+'</div>'
+        ) : '')
+      + '<div class="field"><label>種類</label><div class="chiprow" id="afKind">'
+      +   '<button class="chip" data-kind="cash">現金</button>'
+      +   '<button class="chip" data-kind="wallet">儲值支付</button>'
+      +   '<button class="chip" data-kind="bank">銀行・信用卡</button>'
+      + '</div>'
+      + '<div class="hint" id="afKindHint" style="margin-top:8px;"></div></div>'
+      + (!editing ? '<div class="field" id="afBalanceField"><label>起始餘額（選填）</label><input id="afBalance" inputmode="decimal" placeholder="0"></div>' : '')
+      + '<button class="btn" id="afSave">'+(editing?"儲存":"新增")+'</button>'
+      + (editing ? '<div style="height:10px"></div><button class="btn danger" id="afDelete">刪除帳戶</button>' : '')
+    );
+    var KIND_HINT = {cash:"手上實際的現金金額。", wallet:"像 LINE Pay、街口支付、悠遊付這種有儲值餘額的帳戶，會記錄餘額增減。", bank:"像台灣Pay、簽帳卡、信用卡這種連著銀行帳戶的方式，也會記錄餘額——直接刷這個帳戶消費會扣它的餘額；用「提領現金」把錢領出來變現金時，才會同時扣這裡、加到手頭現金。"};
+    var kindWrap = sheetContent.querySelector("#afKind");
+    var kindHint = sheetContent.querySelector("#afKindHint");
+    function setKind(k){
+      kindWrap.querySelectorAll(".chip").forEach(function(c){ c.classList.toggle("active", c.dataset.kind===k); });
+      kindHint.textContent = KIND_HINT[k];
+    }
+    setKind(editing ? acct.kind : "wallet");
+    kindWrap.addEventListener("click", function(e){
+      var b=e.target.closest("[data-kind]"); if(!b) return;
+      setKind(b.dataset.kind);
+    });
+    var presetWrap = sheetContent.querySelector("[data-preset]");
+    if(sheetContent.querySelectorAll("[data-preset]").length){
+      sheetContent.querySelectorAll("[data-preset]").forEach(function(p){
+        p.addEventListener("click", function(){ sheetContent.querySelector("#afName").value = p.dataset.preset; });
+      });
+    }
+    sheetContent.querySelector("#afSave").addEventListener("click", function(){
+      var name = sheetContent.querySelector("#afName").value.trim();
+      if(!name){ showToast("請輸入名稱"); return; }
+      var kind = kindWrap.querySelector(".chip.active").dataset.kind;
+      if(editing){
+        acct.name = name; acct.kind = kind;
+      } else {
+        var bal = parseFloat(sheetContent.querySelector("#afBalance").value) || 0;
+        state.accounts.push({id:uid(), name:name, kind:kind, balance:bal, createdAt:Date.now()});
+      }
+      save(); closeSheet(); render();
+    });
+    if(editing){
+      sheetContent.querySelector("#afDelete").addEventListener("click", function(){
+        state.accounts = state.accounts.filter(function(a){return a.id!==acct.id;});
+        save(); closeSheet(); showToast("已刪除帳戶"); render();
+      });
+    }
+  }
+
+  function openBackupSheet(){
+    var json = JSON.stringify({accounts:state.accounts, transactions:state.transactions});
+    openSheet(
+      '<div class="sheet-title">備份資料</div>'
+      + '<div class="hint" style="margin-top:0;">全選（長按 → 全選）複製這段文字，貼到備忘錄保存。</div>'
+      + '<textarea id="bkOut" readonly style="height:140px;">'+esc(json)+'</textarea>'
+      + '<div style="height:16px"></div>'
+      + '<div class="sheet-title" style="font-size:16px;">還原資料</div>'
+      + '<div class="hint" style="margin-top:0;">把備份文字貼在這裡，按還原（會覆蓋目前資料）。</div>'
+      + '<textarea id="bkIn" placeholder="貼上備份文字"></textarea>'
+      + '<div style="height:12px"></div>'
+      + '<button class="btn ghost" id="bkRestore">還原</button>'
+    );
+    sheetContent.querySelector("#bkOut").addEventListener("focus", function(){ this.select(); });
+    sheetContent.querySelector("#bkRestore").addEventListener("click", function(){
+      try{
+        var data = JSON.parse(sheetContent.querySelector("#bkIn").value);
+        if(!Array.isArray(data.accounts) || !Array.isArray(data.transactions)) throw new Error("bad shape");
+        state.accounts = data.accounts; state.transactions = data.transactions;
+        save(); closeSheet(); showToast("已還原資料"); render();
+      }catch(e){ showToast("格式不對，還原失敗"); }
+    });
+  }
+
+  /* ---------------- util ---------------- */
+  function esc(s){
+    return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  /* ---------------- init ---------------- */
+  load();
+  render();
+})();
+</script>
